@@ -455,6 +455,10 @@ class StatusPage extends BeanModel {
             analyticsType: this.analytics_type,
             showCertificateExpiry: !!this.show_certificate_expiry,
             showOnlyLastHeartbeat: !!this.show_only_last_heartbeat,
+            showMinecraftMotd: !!this.show_minecraft_motd,
+            showMinecraftPlayers: !!this.show_minecraft_players,
+            showMinecraftHeads: !!this.show_minecraft_heads,
+            showMinecraftChart: !!this.show_minecraft_chart,
             rssTitle: this.rss_title,
         };
     }
@@ -482,6 +486,10 @@ class StatusPage extends BeanModel {
             analyticsType: this.analytics_type,
             showCertificateExpiry: !!this.show_certificate_expiry,
             showOnlyLastHeartbeat: !!this.show_only_last_heartbeat,
+            showMinecraftMotd: !!this.show_minecraft_motd,
+            showMinecraftPlayers: !!this.show_minecraft_players,
+            showMinecraftHeads: !!this.show_minecraft_heads,
+            showMinecraftChart: !!this.show_minecraft_chart,
             rssTitle: this.rss_title,
         };
     }

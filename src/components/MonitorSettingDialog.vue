@@ -43,6 +43,24 @@
                         </div>
                     </template>
 
+                    <template v-if="monitor.isMinecraft">
+                        <hr />
+                        <h6>{{ $t("Minecraft Display") }}</h6>
+                        <div v-for="option in minecraftOptions" :key="option.key" class="my-3">
+                            <label :for="option.key" class="form-label">{{ $t(option.label) }}</label>
+                            <select
+                                :id="option.key"
+                                :value="monitor[option.key]"
+                                class="form-select"
+                                @change="changeMinecraftOption(monitor.group_index, monitor.monitor_index, option.key, $event.target.value)"
+                            >
+                                <option value="inherit">{{ $t("statusPageDefault") }}</option>
+                                <option value="show">{{ $t("Show") }}</option>
+                                <option value="hide">{{ $t("Hide") }}</option>
+                            </select>
+                        </div>
+                    </template>
+
                     <button
                         class="btn btn-primary btn-add-group me-2"
                         @click="$refs.badgeLinkGeneratorDialog.show(monitor.id, monitor.name)"
@@ -80,6 +98,12 @@ export default {
     emits: [],
     data() {
         return {
+            minecraftOptions: [
+                { key: "showMinecraftMotd", label: "showMinecraftMotd" },
+                { key: "showMinecraftPlayers", label: "showMinecraftPlayers" },
+                { key: "showMinecraftHeads", label: "showMinecraftHeads" },
+                { key: "showMinecraftChart", label: "showMinecraftChart" },
+            ],
             monitor: {
                 id: null,
                 name: null,
@@ -108,6 +132,11 @@ export default {
                 group_index: group.index,
                 isClickAble: this.showLink(monitor),
                 url: monitor.element.url,
+                isMinecraft: monitor.element.type === "gamedig" && monitor.element.game === "minecraft",
+                showMinecraftMotd: this.minecraftOptionValue(monitor.element.showMinecraftMotd),
+                showMinecraftPlayers: this.minecraftOptionValue(monitor.element.showMinecraftPlayers),
+                showMinecraftHeads: this.minecraftOptionValue(monitor.element.showMinecraftHeads),
+                showMinecraftChart: this.minecraftOptionValue(monitor.element.showMinecraftChart),
             };
 
             this.MonitorSettingDialog.show();
@@ -157,6 +186,19 @@ export default {
          */
         changeUrl(groupIndex, index, value) {
             this.$root.publicGroupList[groupIndex].monitorList[index].url = value;
+        },
+
+        minecraftOptionValue(value) {
+            if (value === undefined || value === null) {
+                return "inherit";
+            }
+            return value ? "show" : "hide";
+        },
+
+        changeMinecraftOption(groupIndex, index, option, value) {
+            const monitor = this.$root.publicGroupList[groupIndex].monitorList[index];
+            monitor[option] = value === "inherit" ? null : value === "show";
+            this.monitor[option] = value;
         },
     },
 };

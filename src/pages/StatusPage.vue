@@ -114,6 +114,26 @@
                     </label>
                 </div>
 
+                <div class="my-3 form-check form-switch">
+                    <input id="show-minecraft-motd" v-model="config.showMinecraftMotd" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="show-minecraft-motd">{{ $t("showMinecraftMotd") }}</label>
+                </div>
+
+                <div class="my-3 form-check form-switch">
+                    <input id="show-minecraft-players" v-model="config.showMinecraftPlayers" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="show-minecraft-players">{{ $t("showMinecraftPlayers") }}</label>
+                </div>
+
+                <div class="my-3 form-check form-switch">
+                    <input id="show-minecraft-heads" v-model="config.showMinecraftHeads" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="show-minecraft-heads">{{ $t("showMinecraftHeads") }}</label>
+                </div>
+
+                <div class="my-3 form-check form-switch">
+                    <input id="show-minecraft-chart" v-model="config.showMinecraftChart" class="form-check-input" type="checkbox" />
+                    <label class="form-check-label" for="show-minecraft-chart">{{ $t("showMinecraftChart") }}</label>
+                </div>
+
                 <!-- Domain Name List -->
                 <div class="my-3">
                     <label class="form-label">
@@ -494,6 +514,10 @@
                     :show-tags="config.showTags"
                     :show-certificate-expiry="config.showCertificateExpiry"
                     :show-only-last-heartbeat="config.showOnlyLastHeartbeat"
+                    :show-minecraft-motd="config.showMinecraftMotd"
+                    :show-minecraft-players="config.showMinecraftPlayers"
+                    :show-minecraft-heads="config.showMinecraftHeads"
+                    :show-minecraft-chart="config.showMinecraftChart"
                 />
             </div>
 
@@ -691,6 +715,10 @@ export default {
             hasToken: false,
             config: {
                 analyticsType: null,
+                showMinecraftMotd: false,
+                showMinecraftPlayers: false,
+                showMinecraftHeads: false,
+                showMinecraftChart: false,
             },
             selectedMonitor: null,
             incident: null,

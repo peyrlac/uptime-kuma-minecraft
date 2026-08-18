@@ -7,6 +7,7 @@ const { R } = require("redbean-node");
 const { badgeConstants } = require("../../src/util");
 const { makeBadge } = require("badge-maker");
 const { UptimeCalculator } = require("../uptime-calculator");
+const Heartbeat = require("../model/heartbeat");
 
 let router = express.Router();
 
@@ -94,7 +95,17 @@ router.get("/api/status-page/heartbeat/:slug", cache("1 minutes"), async (reques
             );
 
             list = R.convertToBeans("heartbeat", list);
-            heartbeatList[monitorID] = list.reverse().map((row) => row.toPublicJSON());
+            const monitor = await R.findOne("monitor", "id = ?", [monitorID]);
+            const isMinecraftMonitor = monitor?.type === "gamedig" && monitor.game === "minecraft";
+            heartbeatList[monitorID] = await Promise.all(
+                list.reverse().map(async (row) => {
+                    const publicHeartbeat = row.toPublicJSON();
+                    if (isMinecraftMonitor) {
+                        publicHeartbeat.response = await Heartbeat.decodeResponseValue(row.response);
+                    }
+                    return publicHeartbeat;
+                })
+            );
 
             const uptimeCalculator = await UptimeCalculator.getUptimeCalculator(monitorID);
             uptimeList[`${monitorID}_24`] = uptimeCalculator.get24Hour().uptime;
