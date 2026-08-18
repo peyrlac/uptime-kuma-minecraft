@@ -310,6 +310,107 @@
                 </div>
             </div>
 
+            <div v-if="isMinecraftMonitor" class="shadow-box big-padding minecraft-panel">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <div>
+                        <h3 class="mb-0">Minecraft</h3>
+                    </div>
+                    <div class="btn-group" role="group" aria-label="Minecraft display selector">
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'all' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'all'"
+                        >
+                            All
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'motd' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'motd'"
+                        >
+                            MOTD
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'count' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'count'"
+                        >
+                            Players
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'players' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'players'"
+                        >
+                            Player List
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'heads' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'heads'"
+                        >
+                            Heads
+                        </button>
+                        <button
+                            type="button"
+                            class="btn btn-sm"
+                            :class="minecraftView === 'chart' ? 'btn-primary' : 'btn-outline-secondary'"
+                            @click="minecraftView = 'chart'"
+                        >
+                            Affluence
+                        </button>
+                    </div>
+                </div>
+
+                <div v-if="minecraftView === 'all' || minecraftView === 'motd'" class="minecraft-motd mb-4">
+                    <div class="small text-secondary mb-1">MOTD</div>
+                    <div class="minecraft-motd-text">{{ minecraftStatus.motd }}</div>
+                </div>
+
+                <div v-if="minecraftView === 'all' || minecraftView === 'count'" class="minecraft-stats-grid mb-4">
+                    <div class="minecraft-stat-card">
+                        <div class="small text-secondary">Players</div>
+                        <div class="minecraft-count">{{ minecraftStatus.online }} / {{ minecraftStatus.maxplayers }}</div>
+                    </div>
+                    <div class="minecraft-stat-card">
+                        <div class="small text-secondary">Status</div>
+                        <div class="minecraft-status-line">
+                            <span class="minecraft-dot" :class="minecraftStatus.online > 0 ? 'online' : 'offline'" />
+                            {{ minecraftStatus.online > 0 ? "Online" : "Empty" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-if="minecraftView === 'all' || minecraftView === 'players' || minecraftView === 'heads'"
+                    class="minecraft-list-container mb-4"
+                >
+                    <div class="small text-secondary mb-2">Connected players</div>
+                    <div v-if="minecraftStatus.players.length" class="minecraft-player-list">
+                        <div v-for="(player, index) in minecraftStatus.players" :key="player.name + '-' + index" class="minecraft-player-item">
+                            <img
+                                :src="minecraftHeadURL(player)"
+                                :alt="player.name"
+                                class="minecraft-head-avatar"
+                                :title="player.name"
+                            />
+                            <span>{{ player.name }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="text-secondary">No players connected.</div>
+                </div>
+
+                <div v-if="minecraftView === 'all' || minecraftView === 'chart'" class="minecraft-chart-wrap">
+                    <div class="small text-secondary mb-2">Player affluence</div>
+                    <MinecraftPlayerChart :monitor-id="monitor.id" />
+                </div>
+            </div>
+
             <!-- Screenshot -->
             <div v-if="monitor.type === 'real-browser'" class="shadow-box">
                 <div class="row">
@@ -462,6 +563,7 @@ import "prismjs/components/prism-css";
 import { PrismEditor } from "vue-prism-editor";
 import "vue-prism-editor/dist/prismeditor.min.css";
 import ScreenshotDialog from "../components/ScreenshotDialog.vue";
+import MinecraftPlayerChart from "../components/MinecraftPlayerChart.vue";
 
 export default {
     components: {
@@ -477,6 +579,7 @@ export default {
         CertificateInfo,
         PrismEditor,
         ScreenshotDialog,
+        MinecraftPlayerChart,
     },
     data() {
         return {
@@ -498,6 +601,7 @@ export default {
                 code: "",
             },
             deleteChildrenMonitors: false,
+            minecraftView: "all",
         };
     },
     computed: {
@@ -601,6 +705,22 @@ export default {
             } else {
                 return "";
             }
+        },
+
+        isMinecraftMonitor() {
+            return this.monitor?.type === "gamedig" && String(this.monitor.game || "").toLowerCase() === "minecraft";
+        },
+
+        minecraftStatus() {
+            const beat = this.lastHeartBeat || {};
+            const parsed = this.parseMinecraftHeartbeatData(beat);
+
+            return {
+                motd: parsed.motd || "Minecraft Server",
+                online: parsed.online || 0,
+                maxplayers: parsed.maxplayers || 0,
+                players: parsed.players || [],
+            };
         },
     },
 
@@ -865,6 +985,65 @@ export default {
         secondsToHumanReadableFormat(seconds) {
             return timeDurationFormatter.secondsToHumanReadableFormat(seconds);
         },
+
+        parseMinecraftHeartbeatData(beat) {
+            const rawResponse = beat && beat.response;
+            let parsed = {};
+
+            if (typeof rawResponse === "string") {
+                try {
+                    const candidate = rawResponse.startsWith("{") ? JSON.parse(rawResponse) : JSON.parse(rawResponse.slice(1, -1));
+                    parsed = candidate;
+                } catch (e) {
+                    parsed = {};
+                }
+            }
+
+            if (parsed && typeof parsed === "object" && parsed.players) {
+                return {
+                    motd: parsed.motd || "Minecraft Server",
+                    online: Number(parsed.online || parsed.players.length || 0),
+                    maxplayers: Number(parsed.maxplayers || parsed.online || parsed.players.length || 0),
+                    players: Array.isArray(parsed.players)
+                        ? parsed.players
+                              .map((player) => ({
+                                  name: typeof player === "string" ? player : player?.name || "",
+                                  uuid: typeof player === "string" ? null : player?.uuid || null,
+                              }))
+                              .filter((player) => player.name)
+                        : [],
+                };
+            }
+
+            const msg = beat && beat.msg ? String(beat.msg) : "";
+            const match = msg.match(/^(.*?)(?:\s*\((\d+)\/(\d+)\))?(?:\s*-\s*(.*))?$/);
+            if (!match) {
+                return {
+                    motd: "Minecraft Server",
+                    online: 0,
+                    maxplayers: 0,
+                    players: [],
+                };
+            }
+
+            const playerNames = match[4] ? match[4].split(",").map((name) => name.trim()).filter(Boolean) : [];
+            return {
+                motd: match[1] || "Minecraft Server",
+                online: Number(match[2] || playerNames.length || 0),
+                maxplayers: Number(match[3] || playerNames.length || 0),
+                players: playerNames.map((name) => ({ name, uuid: null })),
+            };
+        },
+
+        minecraftHeadURL(player) {
+            if (!player) {
+                return "https://mc-heads.net/avatar/MHF_Steve/32.png";
+            }
+
+            const uuid = typeof player.uuid === "string" ? player.uuid.replaceAll("-", "").toLowerCase() : "";
+            const identifier = /^[0-9a-f]{32}$/.test(uuid) ? uuid : player.name;
+            return `https://mc-heads.net/avatar/${encodeURIComponent(identifier)}/32.png`;
+        },
     },
 };
 </script>
@@ -961,6 +1140,109 @@ table {
     .col {
         margin: 20px 0;
     }
+}
+
+.minecraft-panel {
+    .btn-group {
+        flex-wrap: wrap;
+    }
+}
+
+.minecraft-motd-text {
+    color: $primary;
+    font-weight: 600;
+    font-size: 1.05rem;
+    word-break: break-word;
+}
+
+.minecraft-stats-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.minecraft-stat-card {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.minecraft-count {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.minecraft-status-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.minecraft-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    background: #dc3545;
+
+    &.online {
+        background: #198754;
+    }
+
+    &.offline {
+        background: #6c757d;
+    }
+}
+
+.minecraft-player-list,
+.minecraft-heads-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.minecraft-player-item,
+.minecraft-head-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.minecraft-player-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: $primary;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.minecraft-head-item {
+    padding: 8px 10px 8px 8px;
+    border-radius: 12px;
+}
+
+.minecraft-head-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    object-fit: cover;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.minecraft-chart-wrap {
+    min-height: 220px;
 }
 
 @media (max-width: 550px) {

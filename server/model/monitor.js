@@ -97,6 +97,16 @@ class Monitor extends BeanModel {
             obj.tags = await this.getTags();
         }
 
+        if (this.type === "gamedig") {
+            obj.game = this.game;
+        }
+
+        for (const option of ["showMinecraftMotd", "showMinecraftPlayers", "showMinecraftHeads", "showMinecraftChart"]) {
+            if (this[option] !== undefined && this[option] !== null) {
+                obj[option] = Boolean(this[option]);
+            }
+        }
+
         if (certExpiry) {
             const { certExpiryDaysRemaining, validCert } = await this.getCertExpiry(this.id);
             obj.certExpiryDaysRemaining = certExpiryDaysRemaining;

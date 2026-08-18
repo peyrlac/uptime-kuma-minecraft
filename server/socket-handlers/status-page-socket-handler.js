@@ -336,6 +336,10 @@ module.exports.statusPageSocketHandler = (socket) => {
             statusPage.rss_title = config.rssTitle;
             statusPage.show_only_last_heartbeat = config.showOnlyLastHeartbeat;
             statusPage.show_certificate_expiry = config.showCertificateExpiry;
+            statusPage.show_minecraft_motd = config.showMinecraftMotd;
+            statusPage.show_minecraft_players = config.showMinecraftPlayers;
+            statusPage.show_minecraft_heads = config.showMinecraftHeads;
+            statusPage.show_minecraft_chart = config.showMinecraftChart;
             statusPage.modified_date = R.isoDateTime();
             statusPage.analytics_id = config.analyticsId;
             statusPage.analytics_script_url = config.analyticsScriptUrl;
@@ -388,6 +392,12 @@ module.exports.statusPageSocketHandler = (socket) => {
 
                     if (monitor.url !== undefined) {
                         relationBean.custom_url = monitor.url;
+                    }
+
+                    for (const option of ["showMinecraftMotd", "showMinecraftPlayers", "showMinecraftHeads", "showMinecraftChart"]) {
+                        if (monitor[option] !== undefined && monitor[option] !== null) {
+                            relationBean[option] = monitor[option];
+                        }
                     }
 
                     await R.store(relationBean);

@@ -119,6 +119,41 @@
                                             <HeartbeatBar size="mid" :monitor-id="monitor.element.id" />
                                         </div>
                                     </div>
+                                    <div
+                                        v-if="isMinecraftMonitor(monitor.element)"
+                                        class="minecraft-public-details"
+                                    >
+                                        <div
+                                            v-if="showMinecraftOption(monitor.element, 'showMinecraftMotd') || showMinecraftOption(monitor.element, 'showMinecraftPlayers') || showMinecraftOption(monitor.element, 'showMinecraftHeads')"
+                                            class="minecraft-public-info"
+                                        >
+                                            <div v-if="showMinecraftOption(monitor.element, 'showMinecraftMotd')" class="minecraft-public-motd">
+                                                {{ minecraftStatus(monitor.element).motd }}
+                                            </div>
+                                            <div v-if="showMinecraftOption(monitor.element, 'showMinecraftPlayers') || showMinecraftOption(monitor.element, 'showMinecraftHeads')" class="minecraft-public-players">
+                                                <span v-if="showMinecraftOption(monitor.element, 'showMinecraftPlayers')">
+                                                    {{ minecraftStatus(monitor.element).online }} /
+                                                    {{ minecraftStatus(monitor.element).maxplayers }} players
+                                                </span>
+                                                <span v-if="showMinecraftOption(monitor.element, 'showMinecraftHeads')" class="minecraft-public-heads">
+                                                    <span
+                                                        v-for="(player, index) in minecraftStatus(monitor.element).players"
+                                                        :key="player.name + '-' + index"
+                                                        class="minecraft-public-head"
+                                                        :title="player.name"
+                                                    >
+                                                        <img :src="minecraftHeadURL(player)" :alt="player.name" />
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div
+                                            v-if="showMinecraftOption(monitor.element, 'showMinecraftChart')"
+                                            class="minecraft-public-chart"
+                                        >
+                                            <MinecraftPlayerChart :monitor-id="monitor.element.id" />
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                         </Draggable>
@@ -137,6 +172,7 @@ import HeartbeatBar from "./HeartbeatBar.vue";
 import Uptime from "./Uptime.vue";
 import Tag from "./Tag.vue";
 import Status from "./Status.vue";
+import MinecraftPlayerChart from "./MinecraftPlayerChart.vue";
 
 export default {
     components: {
@@ -146,6 +182,7 @@ export default {
         Uptime,
         Tag,
         Status,
+        MinecraftPlayerChart,
     },
     props: {
         /** Are we in edit mode? */
@@ -163,6 +200,22 @@ export default {
         },
         /** Should only the last heartbeat be shown? */
         showOnlyLastHeartbeat: {
+            type: Boolean,
+        },
+        /** Should Minecraft MOTD be shown? */
+        showMinecraftMotd: {
+            type: Boolean,
+        },
+        /** Should Minecraft player count be shown? */
+        showMinecraftPlayers: {
+            type: Boolean,
+        },
+        /** Should Minecraft player heads be shown? */
+        showMinecraftHeads: {
+            type: Boolean,
+        },
+        /** Should Minecraft player chart be shown? */
+        showMinecraftChart: {
             type: Boolean,
         },
     },
@@ -295,6 +348,52 @@ export default {
             return lastHeartbeat?.status;
         },
 
+        isMinecraftMonitor(monitor) {
+            return monitor?.type === "gamedig" && String(monitor.game || "").toLowerCase() === "minecraft";
+        },
+
+        showMinecraftOption(monitor, option) {
+            return monitor?.[option] === undefined || monitor?.[option] === null ? this[option] : monitor[option];
+        },
+
+        minecraftStatus(monitor) {
+            const heartbeats = this.$root.heartbeatList[monitor.id] ?? [];
+            const heartbeat = heartbeats.at(-1) || {};
+            let parsed = {};
+
+            if (typeof heartbeat.response === "string") {
+                try {
+                    parsed = JSON.parse(heartbeat.response);
+                } catch (e) {
+                    parsed = {};
+                }
+            } else if (heartbeat.response && typeof heartbeat.response === "object") {
+                parsed = heartbeat.response;
+            }
+
+            const players = Array.isArray(parsed.players)
+                ? parsed.players
+                      .map((player) => ({
+                          name: typeof player === "string" ? player : player?.name || "",
+                          uuid: typeof player === "string" ? null : player?.uuid || null,
+                      }))
+                      .filter((player) => player.name)
+                : [];
+
+            return {
+                motd: parsed.motd || "Minecraft Server",
+                online: Number(parsed.online || players.length || 0),
+                maxplayers: Number(parsed.maxplayers || players.length || 0),
+                players,
+            };
+        },
+
+        minecraftHeadURL(player) {
+            const uuid = typeof player?.uuid === "string" ? player.uuid.replaceAll("-", "").toLowerCase() : "";
+            const identifier = /^[0-9a-f]{32}$/.test(uuid) ? uuid : player?.name || "MHF_Steve";
+            return `https://mc-heads.net/avatar/${encodeURIComponent(identifier)}/32.png`;
+        },
+
         /**
          * Returns certificate expiry color based on days remaining
          * @param {object} monitor Monitor to show expiry for
@@ -328,6 +427,63 @@ export default {
 .extra-info {
     display: flex;
     margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.minecraft-public-info {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.minecraft-public-details {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 1fr);
+    gap: 16px;
+    margin-top: 2px;
+    padding-top: 2px;
+    padding-bottom: 4px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.minecraft-public-motd {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.minecraft-public-players {
+    color: $secondary-text;
+    font-size: 0.9em;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.minecraft-public-heads {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 0;
+}
+
+.minecraft-public-head img {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+}
+
+.minecraft-public-chart {
+    width: 100%;
+    height: 244px;
+    padding-bottom: 3px;
+}
+
+@media (max-width: 767px) {
+    .minecraft-public-details {
+        grid-template-columns: 1fr;
+    }
 }
 
 .extra-info > div > div:first-child {

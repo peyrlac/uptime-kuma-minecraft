@@ -39,6 +39,41 @@ describe("GameDig Monitor", () => {
         }
     });
 
+    test("check() includes player count and names in heartbeat.msg for Minecraft servers", async () => {
+        const gamedigMonitor = new GameDigMonitorType();
+
+        mock.method(GameDig, "query", async () => {
+            return {
+                name: "Test Minecraft Server",
+                ping: 42,
+                players: [{ name: "Alice" }, { name: "Bob" }],
+                maxplayers: 10,
+            };
+        });
+
+        const monitor = {
+            hostname: "127.0.0.1",
+            port: 25565,
+            game: "minecraft",
+            gamedigGivenPortOnly: true,
+        };
+
+        const heartbeat = {
+            msg: "",
+            status: PENDING,
+        };
+
+        try {
+            await gamedigMonitor.check(monitor, heartbeat, {});
+
+            assert.strictEqual(heartbeat.status, UP);
+            assert.match(heartbeat.msg, /Test Minecraft Server.*2\/10.*Alice.*Bob/);
+            assert.strictEqual(heartbeat.ping, 42);
+        } finally {
+            mock.restoreAll();
+        }
+    });
+
     test("check() passes hostname directly to GameDig when hostname is not an IP", async () => {
         const gamedigMonitor = new GameDigMonitorType();
 
