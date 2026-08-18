@@ -1,6 +1,6 @@
 services:
   uptime-kuma:
-    image: ${UPTIME_KUMA_IMAGE:-louislam/uptime-kuma:2}
+    image: ${UPTIME_KUMA_IMAGE:-ghcr.io/louislam/uptime-kuma:main}
     restart: unless-stopped
     volumes:
       - ./data:/app/data
